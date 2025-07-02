@@ -433,9 +433,9 @@ function rmap:calculate_slope_height(tile_type, tile_x, tile_y, ent_center_x)
     if rel_x > self.tile_size then rel_x = self.tile_size end
     
     if tile_type == 2 then
-        return tile_y + (self.tile_size - rel_x)
-    elseif tile_type == 3 then
-        return tile_y + rel_x
+    	return tile_y + self.tile_size - rel_x
+	elseif tile_type == 3 then
+    	return tile_y + rel_x
     elseif tile_type == 4 then
         return tile_y + self.tile_size - (rel_x * 0.5)
     elseif tile_type == 5 then
@@ -456,27 +456,35 @@ function rmap:get_slope_collision_y(x, y, width, height)
     local right_tile = math.floor((x + width - 1) / self.tile_size) + 1
     local bottom_tile = math.floor((ent_bottom - 1) / self.tile_size) + 1
     
-    local highest_y = nil
+    local best_y = nil
+    local best_distance = math.huge
     
     for col = left_tile, right_tile do
         if col >= 1 and col <= self.width and bottom_tile >= 1 and bottom_tile <= self.height then
             local tile = self.tilemap[bottom_tile][col]
             if slope_tiles[tile] then
                 local tile_x = (col - 1) * self.tile_size
+                if tile == 2 then tile_x = tile_x - (self.tile_size / 4)
+                elseif tile == 3 then tile_x = tile_x + (self.tile_size / 4) end
                 local tile_y = (bottom_tile - 1) * self.tile_size
                 local slope_height = self:calculate_slope_height(tile, tile_x, tile_y, ent_center_x)
                 
                 if slope_height and ent_bottom >= slope_height then
-                    local ent_top_y = slope_height - height
-                    if not highest_y or ent_top_y < highest_y then
-                        highest_y = ent_top_y
-                    end
-                end
+				    local ent_top_y = slope_height - height
+				    
+				    local tile_center_x = tile_x + self.tile_size / 2
+				    local distance_from_center = math.abs(ent_center_x - tile_center_x)
+				    
+				    if distance_from_center < best_distance then
+				        best_distance = distance_from_center
+				        best_y = ent_top_y
+				    end
+				end
             end
         end
     end
     
-    return highest_y
+    return best_y
 end
 
 function rmap:apply_physics(ent, dt)
