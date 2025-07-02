@@ -9,6 +9,7 @@ RetroMap is a lightweight tilemap collision library for LÖVE that gets you up a
 - Pixel-perfect physics with delta time support
 - Collision filtering (solid, pass-through, or ignored)
 - Zero dependencies. Everything you need in a single file
+- Automatic tile merging for common tiles to squeeze out even more performance
 
 ## Getting Started
 
