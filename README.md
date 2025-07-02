@@ -12,7 +12,7 @@ RetroMap is a lightweight tilemap collision library for LÖVE that gets you up a
 
 ## Getting Started
 
-Honestly, I hate writing documentation, so this will quick (sorry).
+Honestly, I hate writing documentation, so this will be quick (sorry).
 
 Your first step will be requiring the module and creating a world
 
@@ -73,6 +73,24 @@ for _, col in ipairs(player.collisions) do
 	if col.other.is_coin and col.normal.y == -1 then
 		col.other:collect()
 	end
+end
+```
+
+Additionally, you can set filters on objects which changes how they behave to colliding with other entities.
+Currently there's only two collision types: slide (solid collision) and cross (passes through, but still registers as a collision). You can return false if you don't want any collision or checking at all.
+
+```lua
+player.filter = function(player, item, other)
+	if other.is_coin then return "cross"
+	else return "slide" end
+end
+
+-- let the player know this is a coin
+coin.is_coin = true
+coin.filter = function(coin, item, other)
+	-- the coin doesn't need to detect anything
+	-- because the player will do the checking on their end
+	return false
 end
 ```
 
