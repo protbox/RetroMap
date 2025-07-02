@@ -1,7 +1,7 @@
 --[[
     RetroMap - Lightweight tilemap collision library for LÖVE
 	Author: poltergasm
-	
+
     Tile Types:
     0 = Empty space
     1 = Solid block
@@ -9,7 +9,7 @@
     3 = 45 degree slope ascending left \
     4 = 26.5 degree slope ascending right (lower half) _/
     5 = 26.5 degree slope ascending right (upper half) /‾
-    6 = 26.5 degree slope ascending left (upper half) \‾
+    6 = 26.5 degree slope ascending left (upper half) ‾\
     7 = 26.5 degree slope ascending left (lower half) \_
     8 = One-way platform
 --]]
