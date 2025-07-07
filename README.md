@@ -22,6 +22,14 @@ local rmap = require "path.to.retromap"
 
 local world = rmap.new_map({
 	tilemap = {...} -- supplying a tilemap is a MUST. see demo in main.lua for an example
+	-- you can overwrite default variables here if you like, such as
+	default_jump_force = 140, -- jump strength for entities
+	tile_size = 16, -- each tile size (tile_size x tile_size)
+	max_fall_speed = 12, -- cap how fast an entity may fall when being pulled down
+	gravity = 8 * 60, -- gravity of the world
+	default_speed = 60, -- how fast entities move
+	cell_size = 48, -- spatial hash size
+	target_fps = 60, -- to make it feel even more retro you may adjust this 
 })
 
 function love.draw()
