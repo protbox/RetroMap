@@ -24,12 +24,12 @@ function rmap.new_map(t)
 	local obj = {
 		tilemap = t.tilemap,
 		tile_size = 16,
-		gravity = 24 * 60,
+		gravity = 8 * 60,
 		max_fall_speed = 12 * 60,
 		height = #t.tilemap,
 		width = #t.tilemap[1],
 		default_speed = 3 * 60,
-		default_jump_force = 9 * 60,
+		default_jump_force = 4 * 60,
 
 		-- entity management
 		entities = {},
@@ -248,12 +248,12 @@ function rmap:draw_debug()
 	love.graphics.setColor(1, 1, 1, 1)
 end
 
-function rmap:create_ent(x, y, w, h)
+function rmap:create_ent(ent, x, y, w, h)
 	if not h then
-		error("create_ent: object requires x, y, width, height properties")
+		error("create_ent: object requires ent, x, y, width, height properties")
 	end
 
-	local ent = {
+	local fields = {
 		x = x,
 		y = y,
 		width = w,
@@ -269,6 +269,12 @@ function rmap:create_ent(x, y, w, h)
 		sub_x = 0,
 		sub_y = 0
 	}
+
+	for k,v in pairs(fields) do
+		if not ent[k] then
+			ent[k] = v
+		end
+	end
 	
 	table.insert(self.entities, ent)
 	return ent
@@ -398,6 +404,11 @@ function rmap:check_entity_collisions(ent, new_x, new_y)
 						overlap_x = min_x,
 						overlap_y = min_y
 					})
+
+					--[[if ent.collides then
+			        	print("has collides")
+			        	ent:collides({ x = nx, y = ny }, other, response, min_x, min_y)
+			        end]]
 				end
 			end
 		end
@@ -464,22 +475,46 @@ function rmap:get_slope_collision_y(x, y, width, height)
             local tile = self.tilemap[bottom_tile][col]
             if slope_tiles[tile] then
                 local tile_x = (col - 1) * self.tile_size
-                if tile == 2 then tile_x = tile_x - (self.tile_size / 4)
-                elseif tile == 3 then tile_x = tile_x + (self.tile_size / 4) end
+
                 local tile_y = (bottom_tile - 1) * self.tile_size
                 local slope_height = self:calculate_slope_height(tile, tile_x, tile_y, ent_center_x)
                 
-                if slope_height and ent_bottom >= slope_height then
-				    local ent_top_y = slope_height - height
-				    
-				    local tile_center_x = tile_x + self.tile_size / 2
-				    local distance_from_center = math.abs(ent_center_x - tile_center_x)
-				    
-				    if distance_from_center < best_distance then
-				        best_distance = distance_from_center
-				        best_y = ent_top_y
-				    end
-				end
+                if slope_height and ent_bottom >= slope_height - 2 then
+                    local ent_top_y = slope_height - height
+                    
+                    local tile_center_x = tile_x + self.tile_size / 2
+                    local distance_from_center = math.abs(ent_center_x - tile_center_x)
+                    
+                    if distance_from_center < best_distance then
+                        best_distance = distance_from_center
+                        best_y = ent_top_y
+                    end
+                end
+            end
+        end
+    end
+    
+    if bottom_tile > 1 then
+        for col = left_tile, right_tile do
+            if col >= 1 and col <= self.width then
+                local tile = self.tilemap[bottom_tile - 1][col]
+                if slope_tiles[tile] then
+                    local tile_x = (col - 1) * self.tile_size
+                    local tile_y = (bottom_tile - 2) * self.tile_size
+                    local slope_height = self:calculate_slope_height(tile, tile_x, tile_y, ent_center_x)
+                    
+                    if slope_height and math.abs(ent_bottom - slope_height) < 4 then
+                        local ent_top_y = slope_height - height
+                        
+                        local tile_center_x = tile_x + self.tile_size / 2
+                        local distance_from_center = math.abs(ent_center_x - tile_center_x)
+                        
+                        if distance_from_center < best_distance then
+                            best_distance = distance_from_center
+                            best_y = ent_top_y
+                        end
+                    end
+                end
             end
         end
     end
@@ -487,8 +522,44 @@ function rmap:get_slope_collision_y(x, y, width, height)
     return best_y
 end
 
+function rmap:check_for_nearby_slope(x, y, width, height, max_drop)
+    max_drop = max_drop or self.tile_size
+    local ent_center_x = x + width / 2
+    local left_tile = math.floor(x / self.tile_size) + 1
+    local right_tile = math.floor((x + width - 1) / self.tile_size) + 1
+    
+    for drop = 0, max_drop, 4 do
+        local check_y = y + drop
+        local check_bottom = check_y + height
+        local bottom_tile = math.floor(check_bottom / self.tile_size) + 1
+        
+        if bottom_tile >= 1 and bottom_tile <= self.height then
+            for col = left_tile, right_tile do
+                if col >= 1 and col <= self.width then
+                    local tile = self.tilemap[bottom_tile][col]
+                    if slope_tiles[tile] then
+                        local tile_x = (col - 1) * self.tile_size
+                        local tile_y = (bottom_tile - 1) * self.tile_size
+                        local slope_height = self:calculate_slope_height(tile, tile_x, tile_y, ent_center_x)
+                        
+                        if slope_height and check_bottom <= slope_height + 4 then
+                            return slope_height - height
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
 function rmap:apply_physics(ent, dt)
 	if ent.static then return end
+	if ent.remove then
+		self:remove_ent(ent)
+		return
+	end
 	
 	dt = dt or (1 / self.target_fps)
 	
@@ -512,34 +583,43 @@ function rmap:apply_physics(ent, dt)
     ent.sub_y = ent.sub_y - move_y
     
     if move_x ~= 0 then
-        local new_x = ent.x + move_x
-        local new_y = ent.y
-        
-        local collisions = self:check_entity_collisions(ent, new_x, new_y)
-        
-        for _, col in ipairs(collisions) do
-        	if col.type == "slide" then
-        		new_x, new_y, ent.vx, ent.vy = self:resolve_slide(ent, col, move_x, 0)
-        		ent.sub_x = 0
-        	elseif col.type == "cross" then
-        		table.insert(ent.collisions, col)
-        	end
-        end
-        
-        if not self:is_solid(ent, new_x, ent.y) then
-            ent.x = new_x
-            
-            if ent.grounded then
-                local slopeY = self:get_slope_collision_y(ent.x, ent.y, ent.width, ent.height)
-                if slopeY then
-                    ent.y = slopeY
-                end
-            end
-        else
-        	ent.vx = 0
-        	ent.sub_x = 0
-        end
-    end
+	    local new_x = ent.x + move_x
+	    local new_y = ent.y
+	    
+	    local collisions = self:check_entity_collisions(ent, new_x, new_y)
+	    
+	    for _, col in ipairs(collisions) do
+	        if col.type == "slide" then
+	            new_x, new_y, ent.vx, ent.vy = self:resolve_slide(ent, col, move_x, 0)
+	            ent.sub_x = 0
+	        elseif col.type == "cross" then
+	            table.insert(ent.collisions, col)
+	        end
+	    end
+	    
+	    if not self:is_solid(ent, new_x, ent.y) then
+	        ent.x = new_x
+	        
+	        if ent.grounded then
+	            local slopeY = self:get_slope_collision_y(ent.x, ent.y, ent.width, ent.height)
+	            if slopeY then
+	                ent.y = slopeY
+	            else
+	                local slope_below = self:check_for_nearby_slope(ent.x, ent.y, ent.width, ent.height, self.tile_size - 4)
+	                if slope_below then
+
+	                    ent.y = ent.y + 2
+	                    if ent.y > slope_below then
+	                        ent.y = slope_below
+	                    end
+	                end
+	            end
+	        end
+	    else
+	        ent.vx = 0
+	        ent.sub_x = 0
+	    end
+	end
     
     if move_y ~= 0 then
         local new_y = ent.y + move_y
@@ -602,6 +682,7 @@ function rmap:update_all(dt)
 	
 	for _, ent in ipairs(self.entities) do
 		self:apply_physics(ent, dt)
+		if ent.update then ent:update(dt) end
 	end
 end
 

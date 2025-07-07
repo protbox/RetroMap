@@ -31,10 +31,28 @@ end
 ```
 
 That's all you need to get a map up and running. But it's not a lot of use without a player to run around.
-We can use `rmap:create_ent(x, y, w, h)` to create and return a retromap-friendly entity.
+We can use `rmap:create_ent(ent_object, x, y, w, h)` to add properties to the existing entity that work with retromap. If they already exist in the object, they will not be overwritten.
+The fields that are added are as follows:
+
+  	x
+	y
+	width
+	height
+	vx (0)
+	vy (0)
+	speed (default_speed)
+	jump_force (default_jump_force)
+	grounded (false)
+	solid (true)
+	static (false)
+	filter
+	sub_x (0),
+	sub_y (0)
+
+Entities marked as `solid` interract with other entities and have collision tables, whereas `static` do not.
 
 ```lua
-local player = rmap:create_ent(64, 64, 12, 16)
+local player = rmap:create_ent(player_ent, 64, 64, 12, 16)
 ```
 
 Then, to make them move.
@@ -73,6 +91,7 @@ for _, col in ipairs(player.collisions) do
 	-- let's say we wanted to make it so you had to jump on coins to collect them
 	if col.other.is_coin and col.normal.y == -1 then
 		col.other:collect()
+		world:remove_ent(col.other) -- remove_ent removes the entity from the world
 	end
 end
 ```

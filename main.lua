@@ -25,15 +25,13 @@ local world = rmap.new_map({
 	}
 })
 
-local player = world:create_ent(64, 64, 12, 16)
-player.speed = 60
+local player = world:create_ent({ speed = 60 }, 64, 64, 12, 16)
 player.filter = function(player, item, other)
 	if other.is_coin then return "cross"
 	else return "slide" end
 end
 
-local coin = world:create_ent(150, 64, 8, 8)
-coin.is_coin = true
+local coin = world:create_ent({ is_coin = true }, 150, 64, 8, 8)
 coin.filter = function(coin, item, other)
 	return false
 end
